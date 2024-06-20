@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y openjdk-8-jdk
 
 # Installation des dépendances R spécifiées
 RUN R -e "install.packages(c('plumber', 'mongolite', 'tidyr', 'dplyr', 'chron', 'purrr', 'stringr', 'lubridate'))"
-RUN R -e "install.packages('plumber 1.2.2', type = 'source')"
+
 
 
 # Make a directory in the container
