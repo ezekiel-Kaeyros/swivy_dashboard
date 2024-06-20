@@ -14,7 +14,7 @@ jobs:
           DOCKER_USERNAME: ${{secrets.DOCKER_USERNAME}}
           DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
         run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-      - name: Build anti dashbord miq
+      - name: Build swivy dashboard
 
         run: 
            docker build -t ezekielkaeyros/swivy_dashboard .
