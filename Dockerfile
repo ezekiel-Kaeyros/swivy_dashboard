@@ -1,32 +1,23 @@
-FROM rocker/shiny
+# Utiliser l'image de base R
+FROM rocker/r-ver:4.4.1
 
-# Installation de l'openjdk
-RUN apt-get update && apt-get install -y openjdk-8-jdk
+# Installer les dépendances nécessaires
+RUN apt-get update && apt-get install -y \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev
 
-# Installation des dépendances R spécifiées
-RUN R -e "install.packages(c('plumber', 'mongolite', 'tidyr', 'dplyr', 'chron', 'purrr', 'stringr', 'lubridate','plotly'))"
+# Installer les packages R requis
+RUN R -e "install.packages(c('plumber', 'dplyr', 'lubridate', 'ggplot2', 'plotly'), repos='https://cloud.r-project.org/')"
 
-
-
-# Make a directory in the container
+# Définir le répertoire de travail
 WORKDIR /app
 
-# Copy your files into the container
-COPY . /app
-COPY plumber.R /app/plumber.R
+# Copier le script Plumber et d'autres fichiers nécessaires
+COPY . .
 
-
-# Installation libglpk40
-RUN apt-get update && apt-get install -y libglpk40
-
-RUN apt-get update && apt-get install -y libsecret-1-0
-
-# Installation des dépendances système pour les packages R
-# Installation des dépendances système pour les packages R
-RUN apt-get update && apt-get install -y libudunits2-dev libproj-dev libgdal-dev libgeos-dev libgsl-dev
-# Installation de libgsl
-# Expose the application port
+# Exposer le port sur lequel l'application s'exécute
 EXPOSE 8000
 
-# Run the R Shiny app
-CMD ["R", "-e", "shiny::runApp('/app', host = '0.0.0.0', port = 8180)"]
+# Commande pour exécuter l'application
+CMD ["R", "-e", "plumber::plumb('/app/plumber.R')$run(host = '0.0.0.0', port = 8000)"]
