@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev
 
 # Installer les packages R requis
-RUN R -e "install.packages(c('plumber', 'dplyr', 'lubridate', 'ggplot2', 'plotly'), repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages(c('plumber', 'mongolite', 'tidyr', 'dplyr', 'chron', 'purrr', 'stringr', 'lubridate', 'ggplot2', 'plotly'), repos='https://cloud.r-project.org/')"
 
 # Définir le répertoire de travail
 WORKDIR /app
@@ -20,4 +20,4 @@ COPY . .
 EXPOSE 8000
 
 # Commande pour exécuter l'application
-CMD ["R", "-e", "plumber::plumb('/app/plumber.R')$run(host = '0.0.0.0', port = 8000)"]
+CMD ["R", "-e", "plumber::plumb('/app/app.R')$run(host = '0.0.0.0', port = 8000)"]
