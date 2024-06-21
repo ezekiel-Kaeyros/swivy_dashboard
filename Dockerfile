@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y libsecret-1-0
 RUN apt-get update && apt-get install -y libudunits2-dev libproj-dev libgdal-dev libgeos-dev libgsl-dev
 # Installation de libgsl
 # Expose the application port
-EXPOSE 8180
+EXPOSE 8000
 
 # Run the R Shiny app
 CMD ["R", "-e", "shiny::runApp('/app', host = '0.0.0.0', port = 8180)"]
