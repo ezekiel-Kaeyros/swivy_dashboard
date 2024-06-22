@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev
 
 # Installer les packages R requis
-RUN R -e "install.packages(c('plumber', 'mongolite', 'tidyr', 'dplyr', 'chron', 'purrr', 'stringr', 'lubridate', 'ggplot2', 'plotly'), repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages(c('plumber', 'mongolite', 'tidyr', 'dplyr', 'chron', 'purrr', 'stringr', 'lubridate', 'ggplot2', 'plotly')"
 
 # Définir le répertoire de travail
 WORKDIR /app
