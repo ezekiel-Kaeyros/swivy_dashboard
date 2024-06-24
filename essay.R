@@ -1,99 +1,89 @@
-library(plumber)
-library(mongolite)
+# define a user database
+# you should probably use a SQL database instead of data frames
+users <- data.frame(id       = integer(),
+                    name     = character(),
+                    password = character(),
+                    stringsAsFactors = FALSE)
 
-mongoUrl <- "mongodb+srv://eric2mballus:tititata85@cluster0.e1pkdu7.mongodb.net/swivy_db" 
-#<-admin here is the mongodb database that stores the authentication info
+# create test user
+users <- rbind(users, data.frame(id       = 1,
+                                 user     = "jane@example.com",
+                                 password = bcrypt::hashpw("12345"),
+                                 stringsAsFactors = FALSE))
+users <- rbind(users, data.frame(id       = 2,
+                                 user     = "bob@example.com",
+                                 password = bcrypt::hashpw("45678"),
+                                 stringsAsFactors = FALSE))
 
-# specify your collection
-colname <- "user"
+# define a new plumber router
+pr <- plumber::plumber$new()
 
-# specify your database
-dbname <- "mongoengine"
+# define your super secret
+secret <- "3ec9aaf4a744f833e98c954365892583"
 
-# create connection (con)
-con <- mongo(collection = colname, url = mongoUrl, db=dbname)
+# integrate the jwt strategy in a filter
+pr$filter("sealr-jwt", function (req, res) {
+  # simply call the strategy and forward the request and response
+  sealr::authenticate(req = req, res = res, is_authed_fun = sealr::is_authed_jwt,
+                      token_location = "header", secret = secret)
+})
 
-# count how many records (fyi this is just a test)
-#con$count('{}')
+# define authentication route to issue web tokens (exclude "sealr-jwt" filter using preempt)
+pr$handle("POST", "/authentication", function (req, res, user = NULL, password = NULL) {
 
-
-#* @apiTitle API Authentication
-
-#* Log requests
-#* @filter logger
-function(req){
-  #print(paste(" REQUEST IS", typeof(req)))
-  cat(as.character(Sys.time()), "-", 
-      req$REQUEST_METHOD, req$PATH_INFO, "-", 
-      req$HTTP_USER_AGENT, "@", req$REMOTE_ADDR, "\n")
-  forward()
-}
-
-
-#* Authenticate Qualisense Login
-#* @serializer json
-#* @post /login
-function(req, res) {
-  
-  if (is.null(req$body$user) | is.null(req$body$password))
-  {
-    return(list(
-      status = "Login Failed",
-      code = 404,
-      message = "Inavalid parameters"
-    ))
+  # check if user provided credentials
+  if (is.null(user) || is.null(password)) {
+    res$status <- 404
+    return(list(status="Failed.",
+                code=404,
+                message="Please return password or username."))
   }
-  
-  user_name <- req$body$user
-  hashed_password <-req$body$password
-  print(paste0("Username is ",user_name))
-  
-  
-  
-  user_password <- con$find(
-    query = paste0('{"username" : "', user_name, '"}'),
-    fields = '{"password" : true, "_id" : false }',
-    limit = 1
-  )
-  
-  if (is.null(user_password)){
-    print(paste0("Username  ",user_name," not found in database "))
-    return(list(
-      status = "Login Failed",
-      code = 404,
-      message = "Login Data Not Found"
-    ))
-    
+
+  # find user in database
+  index <- match(user, users$user)
+
+  # check if user exist
+  if (is.na(index)) {
+    res$status <- 401
+    return(list(status="Failed.",
+                code=401,
+                message="User or password wrong."))
   }
-  
-  
-  print(paste0("Password is ",user_password))
-  print(paste0("Hashed Password is ",hashed_password))
-  
-  if ( hashed_password == user_password)
-  {
-    
-    
-    return(list(
-      status = "Authentication Successfull",
-      code = 200,
-      message = "Login Success"
-    ))
+
+  # check if password is correct
+  if (!bcrypt::checkpw(password, users$password[index])){
+    res$status <- 401
+    return(list(status="Failed.",
+                code=401,
+                message="User or password wrong."))
   }
-  else
-  {
-    return(list(
-      status = "Login Failed",
-      code = 404,
-      message = "Incorrect Password"
-    ))
-  }
-  
-  
-  return(list(
-    status = "Login Failed",
-    code = 404,
-    message = "NOA"
-  ))
-  
-}
+
+  # define jwt payload
+  # information about the additional fields can be found at
+  # https://tools.ietf.org/html/rfc7519#section-4.1
+  payload <- jose::jwt_claim(userID = users$id[index])
+
+  # convert secret to bytes
+  secret_raw <- charToRaw(secret)
+
+  # encode token using the secret
+  jwt <- jose::jwt_encode_hmac(payload, secret = secret_raw)
+
+  # return jwt as response
+  return(jwt = jwt)
+}, preempt = c("sealr-jwt"))
+
+# define test route without authentication  (exclude "sealr-jwt" filter using preempt)
+pr$handle("GET", "/", function (req, res) {
+  return("Access to route without authentication was successful.")
+}, preempt = c("sealr-jwt"))
+
+
+
+# define test route with authentication
+pr$handle("GET", "/secret", function (req, res) {
+  return("Access to route requiring authentication was successful.")
+})
+
+# start API server
+pr$run(host = "0.0.0.0", port = 9090)

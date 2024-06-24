@@ -1,4 +1,3 @@
-#plumber.R
 Sys.setlocale("LC_ALL","English")
 library(plumber)
 library(mongolite)
@@ -58,42 +57,39 @@ data_gauge <- function(){
   
   #join the precedent dataframe with channelclusters
   roadsitems_srep_pos_chc <- merge(roadsitems_srep_pos,channelclusters,by.x="channelCluster",by.y = "_id",all.x = TRUE)
-  roadsitems_srep_pos_chc <- roadsitems_srep_pos_chc %>% select(roadId,id_road_items,roadItems,saleRep,id_company,status.x,execution_date,name_salerep,posId,name_pos,
-                                                                city,channelCluster,name,color) %>% 
+  roadsitems_srep_pos_chc <<- roadsitems_srep_pos_chc %>% select(roadId,id_road_items,roadItems,saleRep,id_company,status.x,execution_date,name_salerep,posId,name_pos,
+                                                                 city,channelCluster,name) %>% 
     rename(name_cluster=name)
   
   #rename the modalities of variable city
-  roadsitems_srep_pos_chc$city <- gsub("Yaoundé, Cameroon","Yaounde",roadsitems_srep_pos_chc$city)
-  roadsitems_srep_pos_chc$execution_date <- as.Date(roadsitems_srep_pos_chc$execution_date, format = "%d-%m-%Y")
-  #roadsitems_srep_pos_chc$execution_date <<- as.Date(roadsitems_srep_pos_chc$execution_date, format = "%b %d %Y") #---
+  roadsitems_srep_pos_chc$city <<- gsub("Yaoundé, Cameroon","Yaounde",roadsitems_srep_pos_chc$city)
+  roadsitems_srep_pos_chc$execution_date <- as.Date(roadsitems_srep_pos_chc$execution_date, format = "%b %d %Y") #---
   return(roadsitems_srep_pos_chc)
 }
 
-#* Get data for the gauge chart graphic
-#* @get /data_store_visited
+# define a new plumber router
+pr <- plumber::plumber$new()
 
-function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL){ #,posId,saleRep,channelCluster
-  filtre_stv <-data_gauge()
-  filtre_stv$execution_date <- as.Date(filtre_stv$execution_date, format = "%d-%m-%Y")
-  #filtre_stv$execution_date <- as.Date(filtre_stv$execution_date,format("%d-%m-%Y"))
-  
+pr$handle("GET", "/data_store_visited", function (salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL) {
+  filtre <-data_gauge()
+  filtre$execution_date <- as.Date(filtre$execution_date, format = "%b %d %Y")
   if (!is.null(salerep)){
-    filtre_stv <- filtre_stv %>% filter(saleRep==salerep)
+    filtre <- filtre %>% filter(saleRep==salerep)
   }
   if (!is.null(idpos)){
-    filtre_stv <- filtre_stv %>% filter(posId==idpos)
+    filtre <- filtre %>% filter(posId==idpos)
   }
   if (!is.null(idcluster)) {
-    filtre_stv <- filtre_stv %>% filter(channelCluster==idcluster)
+    filtre <- filtre %>% filter(channelCluster==idcluster)
   }
   if (!is.null(location)) {
-    filtre_stv <- filtre_stv %>% filter(city==location)
+    filtre <- filtre %>% filter(city==location)
   }
   if (!is.null(timestart) & !is.null(timeend)) {
-    filtre_stv <- filtre_stv %>% filter(execution_date>=timestart & execution_date<=timeend)
+    filtre <- filtre %>% filter(execution_date>=timestart & execution_date<=timeend)
   }
-  return (filtre_stv)
-}
+  return (filtre)}
+  )
 
 data_table <- function(){
   
@@ -128,7 +124,7 @@ data_table <- function(){
   data_table2$et <- as.POSIXct(data_table2$et,format = "%Y-%m-%d   %H:%M:%S")
   data_table2$time_performed <- round(difftime(data_table2$et, data_table2$st, units = "mins"))
   data_table2$time_performed <- as.numeric(data_table2$time_performed)
-
+  
   #taskactivityitem et idactivityitem
   final_df <- merge(data_table2,activitieitems,by.x = "taskid_activityItem", by.y="_id")
   final_df$status.x <- NULL
@@ -137,11 +133,9 @@ data_table <- function(){
   return(final_df)
 }
 
-#* Get data for the table of sales representant
-#* @get /data_sales_rep
-function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL) {
+pr$handle("GET", "/data_sales_rep", function (salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL) {
   filtre <-data_table()
-  #filtre$execution_date <- as.Date(filtre$execution_date, format = "%b %d %Y")
+  filtre$execution_date <- as.Date(filtre$execution_date, format = "%b %d %Y")
   if (!is.null(salerep)){
     filtre <- filtre %>% filter(saleRep==salerep)
   }
@@ -158,14 +152,12 @@ function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,ti
     filtre <- filtre %>% filter(execution_date>=timestart & execution_date<=timeend)
   }
   return (filtre)
-}
+  }
+)
 
-#* Get data for the bar chart graphic of pos visited by channel cluster
-#* @get /data_store_per_channelcluster
-
-function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL) { 
+pr$handle("GET", "/data_store_per_channelcluster", function (salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL) {
   filtre <- data_gauge()
-  #filtre$execution_date <- as.Date(filtre$execution_date, format = "%b %d %Y")
+  filtre$execution_date <- as.Date(filtre$execution_date, format = "%b %d %Y")
   if (!is.null(salerep)){
     filtre <- filtre %>% filter(saleRep==salerep)
   }
@@ -181,61 +173,11 @@ function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,ti
   if (!is.null(timestart) & !is.null(timeend)) {
     filtre <- filtre %>% filter(execution_date>=timestart & execution_date<=timeend)
   }
-  dataf <- filtre %>% filter(status.x=="completed") %>%
-    group_by(channelCluster,color) %>%
-    summarize(count=n())
-  # dataf <- filtre %>% filter(status.x=="completed")
-  # dataf <- as.data.frame(table(dataf$name))
+  dataf <- filtre %>% filter(status.x=="completed")
+  dataf <- as.data.frame(table(dataf$name))
   return (dataf)
 }
+)
 
-
-#* @get /data_salerep_fixed_date
-function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL) { 
-  filtre <-data_table()
-  if (!is.null(salerep)){
-    filtre <- filtre %>% filter(saleRep==salerep)
-  }
-  if (!is.null(idpos)){
-    filtre <- filtre %>% filter(posId==idpos)
-  }
-  if (!is.null(idcluster)) {
-    filtre <- filtre %>% filter(channelCluster==idcluster)
-  }
-  if (!is.null(location)) {
-    filtre <- filtre %>% filter(city==location)
-  }
-  
-  #today
-  todayy <- filtre %>% filter(taskid_status=="completed" & time >=5) %>%
-    filter(date_start<=Sys.Date() & date_start>=Sys.Date()) %>%
-    group_by(name_salerep) %>% 
-    summarise(total_time_today=sum(time,na.rm = TRUE),total_time_performed_today=sum(time_performed,na.rm = TRUE))
-  
-  #last 7 days
-  last_7days <-filtre %>% filter(taskid_status=="completed" & time >=5) %>%
-    filter(date_start<=Sys.Date() & date_start>=Sys.Date()-7) %>%
-    group_by(name_salerep) %>% 
-    summarise(total_time_7=sum(time,na.rm = TRUE),total_time_performed_7=sum(time_performed,na.rm = TRUE))
-  
-  #last 30 days
-  last_30days <-filtre %>% filter(taskid_status=="completed" & time >=5) %>%
-    filter(date_start<=Sys.Date() & date_start>=Sys.Date()-30) %>%
-    group_by(name_salerep) %>% 
-    summarise(total_time_30=sum(time,na.rm = TRUE),total_time_performed_30=sum(time_performed,na.rm = TRUE))
-  
-  #this year  
-  this_year <- filtre %>% filter(taskid_status=="completed" & time >=5) %>%
-    filter(date_start<=Sys.Date() & date_start>="2024-01-01") %>%
-    group_by(name_salerep) %>% 
-    summarise(total_time_year=sum(time,na.rm = TRUE),total_time_performed_year=sum(time_performed,na.rm = TRUE))
-  
-  #last year 2023
-  last_year <- filtre %>% filter(taskid_status=="completed" & time >=5) %>%
-    filter(date_start<="2023-12-01" & date_start>="2023-01-01") %>%
-    group_by(name_salerep) %>% 
-    summarise(total_time_lastyear=sum(time,na.rm = TRUE),total_time_performed_lastyear=sum(time_performed,na.rm = TRUE))
-  
-  data_aggregate <- Reduce(function(x, y) merge(x, y, by = "name_salerep", all = TRUE), list(todayy, last_7days, last_30days,last_year,this_year))
-  return(data_aggregate)
-}
+# start API server
+pr$run(host = "0.0.0.0", port = 8080)
