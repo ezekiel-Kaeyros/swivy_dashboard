@@ -74,7 +74,7 @@ data_gauge <- function(){
 
 function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL){ #,posId,saleRep,channelCluster
   filtre_stv <-data_gauge()
-  filtre_stv$execution_date <- as.Date(filtre_stv$execution_date, format = "%d-%m-%Y")
+  #filtre_stv$execution_date <- as.Date(filtre_stv$execution_date, format = "%d-%m-%Y")
   #filtre_stv$execution_date <- as.Date(filtre_stv$execution_date,format("%d-%m-%Y"))
   
   if (!is.null(salerep)){
@@ -92,7 +92,12 @@ function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,ti
   if (!is.null(timestart) & !is.null(timeend)) {
     filtre_stv <- filtre_stv %>% filter(execution_date>=timestart & execution_date<=timeend)
   }
-  return (filtre_stv)
+  
+  filtre_stv_comp <- filtre_stv %>% filter(status.x=="completed")
+  nb_completed <- nrow(filtre_stv_comp)
+  nb_all <- nrow(filtre_stv)
+  values <-data.frame("nb_completed"=nb_completed,"nb_all"=nb_all)
+  return (values)
 }
 
 data_table <- function(){
@@ -146,7 +151,7 @@ function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,ti
     filtre <- filtre %>% filter(saleRep==salerep)
   }
   if (!is.null(idpos)){
-    filtre <- filtre %>% filter(posId==idpos)
+    filtre <- filtre %>% filter(posId.x==idpos)
   }
   if (!is.null(idcluster)) {
     filtre <- filtre %>% filter(channelCluster==idcluster)
@@ -157,6 +162,10 @@ function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,ti
   if (!is.null(timestart) & !is.null(timeend)) {
     filtre <- filtre %>% filter(execution_date>=timestart & execution_date<=timeend)
   }
+  filtre <- filtre %>% 
+    filter(taskid_status=="completed" & time >=5) %>%
+    group_by(name_salerep) %>%
+    summarize(total_time=sum(time,na.rm = TRUE), total_performed=sum(time_performed,na.rm = TRUE))
   return (filtre)
 }
 
@@ -182,7 +191,7 @@ function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,ti
     filtre <- filtre %>% filter(execution_date>=timestart & execution_date<=timeend)
   }
   dataf <- filtre %>% filter(status.x=="completed") %>%
-    group_by(channelCluster,color) %>%
+    group_by(name_cluster,channelCluster,color) %>%
     summarize(count=n())
   # dataf <- filtre %>% filter(status.x=="completed")
   # dataf <- as.data.frame(table(dataf$name))
@@ -197,7 +206,7 @@ function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL) {
     filtre <- filtre %>% filter(saleRep==salerep)
   }
   if (!is.null(idpos)){
-    filtre <- filtre %>% filter(posId==idpos)
+    filtre <- filtre %>% filter(posId.x==idpos)
   }
   if (!is.null(idcluster)) {
     filtre <- filtre %>% filter(channelCluster==idcluster)
