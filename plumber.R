@@ -69,6 +69,13 @@ data_gauge <- function(){
   return(roadsitems_srep_pos_chc)
 }
 
+#* @filter cors
+cors <- function(res) {
+  res$setHeader("Access-Control-Allow-Origin", "*")
+  plumber::forward()
+}
+
+
 #* Get data for the gauge chart graphic
 #* @get /data_store_visited
 
@@ -142,6 +149,7 @@ data_table <- function(){
   return(final_df)
 }
 
+
 #* Get data for the table of sales representant
 #* @get /data_sales_rep
 function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL) {
@@ -168,6 +176,7 @@ function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,ti
     summarize(total_time=sum(time,na.rm = TRUE), total_performed=sum(time_performed,na.rm = TRUE))
   return (filtre)
 }
+
 
 #* Get data for the bar chart graphic of pos visited by channel cluster
 #* @get /data_store_per_channelcluster
@@ -246,5 +255,7 @@ function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL) {
     summarise(total_time_lastyear=sum(time,na.rm = TRUE),total_time_performed_lastyear=sum(time_performed,na.rm = TRUE))
   
   data_aggregate <- Reduce(function(x, y) merge(x, y, by = "name_salerep", all = TRUE), list(todayy, last_7days, last_30days,last_year,this_year))
+  data_aggregate <- data_aggregate %>%
+    mutate_all(~ ifelse(is.na(.), 0, .))
   return(data_aggregate)
 }
