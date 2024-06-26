@@ -75,9 +75,12 @@ cors <- function(res) {
   plumber::forward()
 }
 
-
+#* @param salerep:[string]
+#* @param idpos:[string]
+#* @param idcluster:[string]
+#* @param location:[string]
 #* Get data for the gauge chart graphic
-#* @get /data_store_visited
+#* @get /data_store_visited_agg
 
 function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL){ #,posId,saleRep,channelCluster
   filtre_stv <-data_gauge()
@@ -85,26 +88,59 @@ function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,ti
   #filtre_stv$execution_date <- as.Date(filtre_stv$execution_date,format("%d-%m-%Y"))
   
   if (!is.null(salerep)){
-    filtre_stv <- filtre_stv %>% filter(saleRep==salerep)
+    filtre_stv <- filtre_stv %>% filter(saleRep %in% salerep)
+    #filtre_stv <- filtre_stv %>% filter(saleRep==salerep)
   }
   if (!is.null(idpos)){
-    filtre_stv <- filtre_stv %>% filter(posId==idpos)
+    filtre_stv <- filtre_stv %>% filter(posId %in% idpos)
+    #filtre_stv <- filtre_stv %>% filter(posId==idpos)
   }
   if (!is.null(idcluster)) {
-    filtre_stv <- filtre_stv %>% filter(channelCluster==idcluster)
+    filtre_stv <- filtre_stv %>% filter(channelCluster %in% idcluster)
+    #filtre_stv <- filtre_stv %>% filter(channelCluster==idcluster)
   }
   if (!is.null(location)) {
-    filtre_stv <- filtre_stv %>% filter(city==location)
+    filtre_stv <- filtre_stv %>% filter(city %in% location)
+    #filtre_stv <- filtre_stv %>% filter(city==location)
   }
   if (!is.null(timestart) & !is.null(timeend)) {
     filtre_stv <- filtre_stv %>% filter(execution_date>=timestart & execution_date<=timeend)
   }
   
-  filtre_stv_comp <- filtre_stv %>% filter(status.x=="completed")
-  nb_completed <- nrow(filtre_stv_comp)
-  nb_all <- nrow(filtre_stv)
-  values <-data.frame("nb_completed"=nb_completed,"nb_all"=nb_all)
-  return (values)
+  # filtre_stv_comp <- filtre_stv %>% filter(status.x=="completed")
+  # nb_completed <- nrow(filtre_stv_comp)
+  # nb_all <- nrow(filtre_stv)
+  #values <-data.frame("nb_completed"=nb_completed,"nb_all"=nb_all)
+  visit_status <- as.data.frame(table(filtre_stv$status.x))
+  visit_status <- visit_status %>% rename(status=Var1)
+  visit_status$percentage <- round(visit_status$Freq/sum(visit_status$Freq)*100,2)
+  return (visit_status)
+}
+
+#* @param salerep:[string]
+#* @param idpos:[string]
+#* @param idcluster:[string]
+#* @param location:[string]
+#* @get /data_store_visited
+
+function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL){ #,posId,saleRep,channelCluster
+  filtre_stv <-data_gauge()
+  if (!is.null(salerep)){
+    filtre_stv <- filtre_stv %>% filter(saleRep %in% salerep)
+  }
+  if (!is.null(idpos)){
+    filtre_stv <- filtre_stv %>% filter(posId %in% idpos)
+  }
+  if (!is.null(idcluster)) {
+    filtre_stv <- filtre_stv %>% filter(channelCluster %in% idcluster)
+  }
+  if (!is.null(location)) {
+    filtre_stv <- filtre_stv %>% filter(city %in% location)
+  }
+  if (!is.null(timestart) & !is.null(timeend)) {
+    filtre_stv <- filtre_stv %>% filter(execution_date>=timestart & execution_date<=timeend)
+  }
+  return (filtre_stv)
 }
 
 data_table <- function(){
@@ -149,52 +185,85 @@ data_table <- function(){
   return(final_df)
 }
 
-
+#* @param salerep:[string]
+#* @param idpos:[string]
+#* @param idcluster:[string]
+#* @param location:[string]
 #* Get data for the table of sales representant
-#* @get /data_sales_rep
+#* @get /data_sales_rep_agg
 function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL) {
   filtre <-data_table()
   #filtre$execution_date <- as.Date(filtre$execution_date, format = "%b %d %Y")
   if (!is.null(salerep)){
-    filtre <- filtre %>% filter(saleRep==salerep)
+    filtre <- filtre %>% filter(saleRep %in% salerep)
   }
   if (!is.null(idpos)){
-    filtre <- filtre %>% filter(posId.x==idpos)
+    filtre <- filtre %>% filter(posId.x %in% idpos)
   }
   if (!is.null(idcluster)) {
-    filtre <- filtre %>% filter(channelCluster==idcluster)
+    filtre <- filtre %>% filter(channelCluster %in% idcluster)
   }
   if (!is.null(location)) {
-    filtre <- filtre %>% filter(city==location)
+    filtre <- filtre %>% filter(city %in% location)
   }
   if (!is.null(timestart) & !is.null(timeend)) {
     filtre <- filtre %>% filter(execution_date>=timestart & execution_date<=timeend)
   }
   filtre <- filtre %>% 
     filter(taskid_status=="completed" & time >=5) %>%
-    group_by(name_salerep) %>%
+    group_by(saleRep,name_salerep) %>%
     summarize(total_time=sum(time,na.rm = TRUE), total_performed=sum(time_performed,na.rm = TRUE))
   return (filtre)
 }
 
+#* @param salerep:[string]
+#* @param idpos:[string]
+#* @param idcluster:[string]
+#* @param location:[string]
+#* Get data for the table of sales representant
+#* @get /data_sales_rep
+function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL) {
+  filtre <-data_table()
+  #filtre$execution_date <- as.Date(filtre$execution_date, format = "%b %d %Y")
+  if (!is.null(salerep)){
+    filtre <- filtre %>% filter(saleRep %in% salerep)
+  }
+  if (!is.null(idpos)){
+    filtre <- filtre %>% filter(posId.x %in% idpos)
+  }
+  if (!is.null(idcluster)) {
+    filtre <- filtre %>% filter(channelCluster %in% idcluster)
+  }
+  if (!is.null(location)) {
+    filtre <- filtre %>% filter(city %in% location)
+  }
+  if (!is.null(timestart) & !is.null(timeend)) {
+    filtre <- filtre %>% filter(execution_date>=timestart & execution_date<=timeend)
+  }
+  return (filtre)
+}
 
+#* @param salerep:[string]
+#* @param idpos:[string]
+#* @param idcluster:[string]
+#* @param location:[string]
 #* Get data for the bar chart graphic of pos visited by channel cluster
-#* @get /data_store_per_channelcluster
+#* @get /data_store_per_channelcluster_agg
 
 function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL) { 
   filtre <- data_gauge()
   #filtre$execution_date <- as.Date(filtre$execution_date, format = "%b %d %Y")
   if (!is.null(salerep)){
-    filtre <- filtre %>% filter(saleRep==salerep)
+    filtre <- filtre %>% filter(saleRep %in% salerep)
   }
   if (!is.null(idpos)){
-    filtre <- filtre %>% filter(posId==idpos)
+    filtre <- filtre %>% filter(posId %in% idpos)
   }
   if (!is.null(idcluster)) {
-    filtre <- filtre %>% filter(channelCluster==idcluster)
+    filtre <- filtre %>% filter(channelCluster %in% idcluster)
   }
   if (!is.null(location)) {
-    filtre <- filtre %>% filter(city==location)
+    filtre <- filtre %>% filter(city %in% location)
   }
   if (!is.null(timestart) & !is.null(timeend)) {
     filtre <- filtre %>% filter(execution_date>=timestart & execution_date<=timeend)
@@ -207,54 +276,85 @@ function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,ti
   return (dataf)
 }
 
+#* @param salerep:[string]
+#* @param idpos:[string]
+#* @param idcluster:[string]
+#* @param location:[string]
+#* Get data for the bar chart graphic of pos visited by channel cluster
+#* @get /data_store_per_channelcluster
 
+function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL,timestart=NULL,timeend=NULL) { 
+  filtre <- data_gauge()
+  #filtre$execution_date <- as.Date(filtre$execution_date, format = "%b %d %Y")
+  if (!is.null(salerep)){
+    filtre <- filtre %>% filter(saleRep %in% salerep)
+  }
+  if (!is.null(idpos)){
+    filtre <- filtre %>% filter(posId %in% idpos)
+  }
+  if (!is.null(idcluster)) {
+    filtre <- filtre %>% filter(channelCluster %in% idcluster)
+  }
+  if (!is.null(location)) {
+    filtre <- filtre %>% filter(city %in% location)
+  }
+  if (!is.null(timestart) & !is.null(timeend)) {
+    filtre <- filtre %>% filter(execution_date>=timestart & execution_date<=timeend)
+  }
+  return (filtre)
+}
+
+#* @param salerep:[string]
+#* @param idpos:[string]
+#* @param idcluster:[string]
+#* @param location:[string]
 #* @get /data_salerep_fixed_date
 function(salerep=NULL, idpos=NULL,idcluster=NULL,location=NULL) { 
   filtre <-data_table()
   if (!is.null(salerep)){
-    filtre <- filtre %>% filter(saleRep==salerep)
+    filtre <- filtre %>% filter(saleRep %in% salerep)
   }
   if (!is.null(idpos)){
-    filtre <- filtre %>% filter(posId.x==idpos)
+    filtre <- filtre %>% filter(posId.x %in% idpos)
   }
   if (!is.null(idcluster)) {
-    filtre <- filtre %>% filter(channelCluster==idcluster)
+    filtre <- filtre %>% filter(channelCluster %in% idcluster)
   }
   if (!is.null(location)) {
-    filtre <- filtre %>% filter(city==location)
+    filtre <- filtre %>% filter(city %in% location)
   }
   
   #today
   todayy <- filtre %>% filter(taskid_status=="completed" & time >=5) %>%
     filter(date_start<=Sys.Date() & date_start>=Sys.Date()) %>%
-    group_by(name_salerep) %>% 
+    group_by(saleRep,name_salerep) %>% 
     summarise(total_time_today=sum(time,na.rm = TRUE),total_time_performed_today=sum(time_performed,na.rm = TRUE))
   
   #last 7 days
   last_7days <-filtre %>% filter(taskid_status=="completed" & time >=5) %>%
     filter(date_start<=Sys.Date() & date_start>=Sys.Date()-7) %>%
-    group_by(name_salerep) %>% 
+    group_by(saleRep,name_salerep) %>% 
     summarise(total_time_7=sum(time,na.rm = TRUE),total_time_performed_7=sum(time_performed,na.rm = TRUE))
   
   #last 30 days
   last_30days <-filtre %>% filter(taskid_status=="completed" & time >=5) %>%
     filter(date_start<=Sys.Date() & date_start>=Sys.Date()-30) %>%
-    group_by(name_salerep) %>% 
+    group_by(saleRep,name_salerep) %>% 
     summarise(total_time_30=sum(time,na.rm = TRUE),total_time_performed_30=sum(time_performed,na.rm = TRUE))
   
   #this year  
   this_year <- filtre %>% filter(taskid_status=="completed" & time >=5) %>%
     filter(date_start<=Sys.Date() & date_start>="2024-01-01") %>%
-    group_by(name_salerep) %>% 
+    group_by(saleRep,name_salerep) %>% 
     summarise(total_time_year=sum(time,na.rm = TRUE),total_time_performed_year=sum(time_performed,na.rm = TRUE))
   
   #last year 2023
   last_year <- filtre %>% filter(taskid_status=="completed" & time >=5) %>%
     filter(date_start<="2023-12-01" & date_start>="2023-01-01") %>%
-    group_by(name_salerep) %>% 
+    group_by(saleRep,name_salerep) %>% 
     summarise(total_time_lastyear=sum(time,na.rm = TRUE),total_time_performed_lastyear=sum(time_performed,na.rm = TRUE))
   
-  data_aggregate <- Reduce(function(x, y) merge(x, y, by = "name_salerep", all = TRUE), list(todayy, last_7days, last_30days,last_year,this_year))
+  data_aggregate <- Reduce(function(x, y) merge(x, y, by = c("saleRep","name_salerep"), all = TRUE), list(todayy, last_7days, last_30days,last_year,this_year))
   data_aggregate <- data_aggregate %>%
     mutate_all(~ ifelse(is.na(.), 0, .))
   return(data_aggregate)
